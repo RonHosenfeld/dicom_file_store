@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Send — DICOM File Store{% endblock %}
+{% block content %}
+<h1>Send</h1>
+
+<section class="card">
+  <h2>Generate &amp; send synthetic exam</h2>
+  <form method="post" action="/send/generate" class="form">
+    {% include "_send_fields.html" %}
+    <fieldset>
+      <legend>Modalities</legend>
+      {% for key, spec in modality_specs.items() %}
+      <label class="inline"><input type="checkbox" name="modalities" value="{{ key }}"> {{ key }} <span class="detail">({{ spec.rows }}×{{ spec.cols }}, {{ spec.bits }}-bit)</span></label>
+      {% endfor %}
+    </fieldset>
+    <div class="form-grid">
+      <label>Series count <input type="number" name="series_count" value="1" min="1" max="100"></label>
+      <label>Images per series <input type="number" name="images_per_series" value="1" min="1" max="5000"></label>
+      <label>Patient name <input name="patient_name" placeholder="auto: TEST^PATIENTnnn"></label>
+      <label>Patient ID <input name="patient_id" placeholder="auto: PIDnnnnnn"></label>
+      <label>Accession <input name="accession" placeholder="auto: SYN-XXXXXX"></label>
+      <label>Study description <input name="study_description" placeholder="auto: Synthetic test study"></label>
+      <label>Study date <input name="study_date" placeholder="YYYYMMDD (default today)"></label>
+    </div>
+    <button class="start">Generate &amp; send</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Send from directory</h2>
+  <form method="post" action="/send/scan" class="form">
+    <div class="form-grid">
+      <label>Directory <input name="directory" placeholder="/path/to/dicom/files"></label>
+    </div>
+    <button>Scan</button>
+  </form>
+  {% if scan %}
+  <form method="post" action="/send/directory">
+    <input type="hidden" name="scan_id" value="{{ scan_id }}">
+    {% include "_send_fields.html" %}
+    <p class="detail">{{ scan.studies | length }} studies
+      {%- if scan.truncated %} <span class="warning">scan truncated</span>{% endif %}
+      {%- if scan.skipped %} · {{ scan.skipped }} non-DICOM files skipped{% endif %}</p>
+    <table>
+      <thead><tr><th></th><th>Patient</th><th>Accession</th><th>Study date</th>
+        <th>Modalities</th><th>Series</th><th>Instances</th></tr></thead>
+      <tbody>
+      {% for study in scan.studies %}
+        <tr>
+          <td><input type="checkbox" name="study_uid" value="{{ study.study_uid }}" checked></td>
+          <td>{{ study.patient_name or "—" }}</td>
+          <td>{{ study.accession or "—" }}</td>
+          <td>{{ study.study_date or "—" }}</td>
+          <td>{{ study.modalities | join(", ") or "—" }}</td>
+          <td>{{ study.series | length }}</td>
+          <td>{{ study.instance_count }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <button class="start">Send selected studies</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Jobs</h2>
+  {% if jobs %}
+  <table id="jobs-table">
+    <thead><tr><th>Job</th><th>State</th><th>Progress</th><th>Sent</th><th>Failed</th>
+      <th>Elapsed</th><th>Rate</th><th></th></tr></thead>
+    <tbody>
+    {% for job in jobs %}
+      <tr data-job-id="{{ job.id }}">
+        <td class="wrap">{{ job.label }}</td>
+        <td><span class="job-state badge {{ 'running' if job.state == 'running' else 'stopped' }}">{{ job.state }}</span></td>
+        <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div>
+            <span class="progress-text detail"></span></td>
+        <td class="sent">0</td>
+        <td class="failed">0</td>
+        <td class="elapsed">—</td>
+        <td class="rate">—</td>
+        <td>
+          {% if job.state == 'running' %}
+          <form method="post" action="/send/jobs/{{ job.id }}/cancel"><button class="stop">Cancel</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No send jobs yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  async function pollJobs() {
+    const rows = document.querySelectorAll("tr[data-job-id]");
+    let anyRunning = false;
+    for (const row of rows) {
+      const stateEl = row.querySelector(".job-state");
+      if (!stateEl.textContent.trim().match(/^(running|queued)$/)) continue;
+      anyRunning = true;
+      const id = row.dataset.jobId;
+      const resp = await fetch(`/send/jobs/${id}/progress`);
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const p = data.progress;
+      stateEl.textContent = data.state;
+      const done = p.sent_ok + p.failed;
+      const pct = p.total_instances ? Math.round(100 * done / p.total_instances) : 0;
+      row.querySelector(".progress-bar").style.width = pct + "%";
+      row.querySelector(".progress-text").textContent =
+        `${done} / ${p.total_instances} · ${p.series_done}/${p.total_series} series`;
+      row.querySelector(".sent").textContent = p.sent_ok;
+      row.querySelector(".failed").textContent = p.failed;
+      row.querySelector(".elapsed").textContent =
+        p.elapsed_seconds != null ? p.elapsed_seconds + "s" : "—";
+      row.querySelector(".rate").textContent =
+        p.rate_per_sec != null ? p.rate_per_sec + "/s" : "—";
+      if (data.state !== "running" && data.state !== "queued") {
+        stateEl.className = "job-state badge " + (data.state === "completed" ? "running" : "stopped");
+      }
+    }
+    if (!anyRunning) clearInterval(timer);
+  }
+  const timer = setInterval(pollJobs, 500);
+</script>
+{% endblock %}

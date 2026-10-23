@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Settings — DICOM File Store{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% if running %}
+<p class="warning">The receiver is running. Stop it before changing settings.</p>
+{% endif %}
+<form method="post" action="/settings" class="card form">
+  <label>Listen port (DICOM)
+    <input type="number" name="port" value="{{ cfg.port }}" min="1" max="65535" {{ "disabled" if running }}>
+  </label>
+  <label>AE title (max 16 chars)
+    <input type="text" name="ae_title" value="{{ cfg.ae_title }}" maxlength="16" {{ "disabled" if running }}>
+  </label>
+  <label>Storage path
+    <input type="text" name="storage_path" value="{{ cfg.storage_path }}" size="60" {{ "disabled" if running }}>
+  </label>
+  <label>Web UI port
+    <input type="number" name="web_port" value="{{ cfg.web_port }}" min="1" max="65535" {{ "disabled" if running }}>
+  </label>
+  <button type="submit" {{ "disabled" if running }}>Save</button>
+</form>
+{% endblock %}

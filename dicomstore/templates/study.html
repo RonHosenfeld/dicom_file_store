@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ folder }} — DICOM File Store{% endblock %}
+{% block content %}
+<h1>Study: {{ folder }}</h1>
+<section class="card">
+  <p><strong>Patient:</strong> {{ doc.get("PatientName", "") or "—" }}
+     ({{ doc.get("PatientID", "") or "no ID" }})</p>
+  <p><strong>Accession:</strong> {{ doc.get("AccessionNumber", "") or "—" }}</p>
+  <p><strong>Study date:</strong> {{ doc.get("StudyDate", "") or "—" }}
+     <strong>Description:</strong> {{ doc.get("StudyDescription", "") or "—" }}</p>
+  <p><strong>Modalities:</strong> {{ (doc.get("Modalities", []) or []) | join(", ") or "—" }}
+     <strong>Instances:</strong> {{ doc.get("InstanceCount", 0) }}</p>
+  <p><a href="/files/{{ folder | urlencode }}/study.json">Download study.json</a></p>
+</section>
+
+<h2>Instances</h2>
+<table>
+  <thead><tr><th>File</th><th>Modality</th><th>Received at</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for inst in doc.get("Instances", []) %}
+    <tr>
+      <td><code>{{ inst.File }}</code></td>
+      <td>{{ inst.Modality or "—" }}</td>
+      <td>{{ inst.ReceivedAt or "—" }}</td>
+      <td>
+        <a href="/files/{{ folder | urlencode }}/{{ inst.File | urlencode }}">download</a>
+        · <a href="/files/{{ folder | urlencode }}/{{ inst.File | urlencode }}/preview">preview tags</a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

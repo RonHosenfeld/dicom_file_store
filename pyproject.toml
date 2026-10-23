@@ -1,0 +1,19 @@
+[project]
+name = "dicomstore"
+version = "0.1.0"
+description = "DICOM receiver that stores studies as one file per instance, grouped by accession number"
+requires-python = ">=3.12"
+dependencies = [
+    "pynetdicom>=3.0,<4",
+    "pydicom>=3.0,<4",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

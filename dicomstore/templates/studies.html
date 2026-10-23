@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Studies — DICOM File Store{% endblock %}
+{% block content %}
+<h1>Studies</h1>
+{% if studies %}
+<table>
+  <thead><tr><th>Folder</th><th>Patient</th><th>Patient ID</th><th>Accession</th><th>Study date</th><th>Description</th><th>Modalities</th><th>Instances</th></tr></thead>
+  <tbody>
+  {% for s in studies %}
+    <tr>
+      <td><a href="/studies/{{ s.folder | urlencode }}">{{ s.name }}</a></td>
+      <td>{{ (s.doc or {}).get("PatientName", "") or "—" }}</td>
+      <td>{{ (s.doc or {}).get("PatientID", "") or "—" }}</td>
+      <td>{{ (s.doc or {}).get("AccessionNumber", "") or "—" }}</td>
+      <td>{{ s.study_date or "—" }}</td>
+      <td>{{ (s.doc or {}).get("StudyDescription", "") or "—" }}</td>
+      <td>{{ ((s.doc or {}).get("Modalities", []) or []) | join(", ") or "—" }}</td>
+      <td>{{ s.instance_count }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No studies received yet.</p>
+{% endif %}
+{% endblock %}

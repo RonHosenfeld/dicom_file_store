@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ filename }} — DICOM File Store{% endblock %}
+{% block content %}
+<h1>Tags: {{ filename }}</h1>
+<p><a href="/files/{{ folder | urlencode }}/{{ filename | urlencode }}">Download file</a></p>
+<table>
+  <thead><tr><th>Tag / keyword</th><th>VR</th><th>Value</th></tr></thead>
+  <tbody>
+  {% for e in elements %}
+    <tr><td><code>{{ e.keyword }}</code></td><td>{{ e.vr }}</td><td class="wrap">{{ e.value }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

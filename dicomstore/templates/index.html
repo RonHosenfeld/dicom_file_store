@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — DICOM File Store{% endblock %}
+{% block content %}
+<h1>Receiver</h1>
+<section class="card">
+  <div class="status-row">
+    <span id="status-badge" class="badge {{ 'running' if running else 'stopped' }}">
+      {{ 'Running' if running else 'Stopped' }}
+    </span>
+    <span class="detail">
+      Port {{ cfg.port }} · AE title “{{ cfg.ae_title }}” · storing to <code>{{ cfg.storage_path }}</code>
+    </span>
+  </div>
+  <div class="actions">
+    {% if running %}
+    <form method="post" action="/receiver/stop"><button class="stop">Stop</button></form>
+    {% else %}
+    <form method="post" action="/receiver/start"><button class="start">Start</button></form>
+    {% endif %}
+  </div>
+</section>
+
+<h1>Recent studies</h1>
+{% if studies %}
+<table>
+  <thead><tr><th>Folder</th><th>Patient</th><th>Study date</th><th>Instances</th></tr></thead>
+  <tbody>
+  {% for s in studies %}
+    <tr>
+      <td><a href="/studies/{{ s.folder | urlencode }}">{{ s.name }}</a></td>
+      <td>{{ s.patient_name or "—" }}</td>
+      <td>{{ s.study_date or "—" }}</td>
+      <td>{{ s.instance_count }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No studies received yet.</p>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  setInterval(async () => {
+    const resp = await fetch("/status");
+    const data = await resp.json();
+    const badge = document.getElementById("status-badge");
+    badge.textContent = data.running ? "Running" : "Stopped";
+    badge.className = "badge " + (data.running ? "running" : "stopped");
+  }, 2000);
+</script>
+{% endblock %}
